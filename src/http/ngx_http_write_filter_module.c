@@ -43,6 +43,8 @@ ngx_module_t  ngx_http_write_filter_module = {
     NGX_MODULE_V1_PADDING
 };
 
+//static struct timeval st_tv;
+//static long long previous_sent_bytes = 0;
 
 ngx_int_t
 ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
@@ -303,6 +305,36 @@ ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     r->out = chain;
 
+/*****
+ * toints add write log every 5 minute
+ *****/
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    long long sent_bytes = (c->sent - r->header_size) - r->previous_sent_bytes;
+    //ngx_log_error(NGX_LOG_ERR, c->log, 0, "@@@@@@@@  start time:%d, current time:%d, delta time: %d, sent_bytes:%d", r->st_tv.tv_sec, tv.tv_sec, (tv.tv_sec - r->st_tv.tv_sec), sent_bytes);
+    if(tv.tv_sec - r->st_tv.tv_sec >= 300)
+    {
+        //ngx_log_error(NGX_LOG_ERR, c->log, 0, "######## time:%d.%d , http write filter send data: %d",tv.tv_sec, tv.tv_usec, sent_bytes);
+        r->st_tv.tv_sec = tv.tv_sec;
+        r->previous_sent_bytes = c->sent - r->header_size;
+
+        long long *byte_add = ngx_array_push(r->bytes_array);
+        *byte_add = sent_bytes;
+#if 0
+	ngx_uint_t j = 0;
+	for(; j<r->bytes_array->nelts; j++)
+	{
+		ngx_log_error(NGX_LOG_ERR, c->log, 0, "#####******** element %d --> %d",j, ((long long *)r->bytes_array->elts)[j]);
+	}
+#endif
+    }
+/*
+    else
+    {
+        ngx_log_error(NGX_LOG_ERR, c->log, 0, "start time:%d, current time:%d, delta time: %d, sent_bytes:%d", r->st_tv.tv_sec, tv.tv_sec, (tv.tv_sec - r->st_tv.tv_sec), sent_bytes);
+    }
+*/
+
     if (chain) {
         c->buffered |= NGX_HTTP_WRITE_BUFFERED;
         return NGX_AGAIN;
@@ -314,6 +346,10 @@ ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
         return NGX_AGAIN;
     }
 
+    //ngx_log_error(NGX_LOG_ERR, c->log, 0, "######## last one----> time:%d.%d , http write filter send data: %d",tv.tv_sec, tv.tv_usec, sent_bytes);
+    long long *last_bytes_add = ngx_array_push(r->bytes_array);
+    *last_bytes_add = sent_bytes;
+
     return NGX_OK;
 }
 
@@ -322,6 +358,7 @@ static ngx_int_t
 ngx_http_write_filter_init(ngx_conf_t *cf)
 {
     ngx_http_top_body_filter = ngx_http_write_filter;
+    //gettimeofday(&st_tv, NULL);
 
     return NGX_OK;
 }

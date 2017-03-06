@@ -607,6 +607,10 @@ ngx_http_create_request(ngx_connection_t *c)
     (void) ngx_atomic_fetch_add(ngx_stat_requests, 1);
 #endif
 
+    //add by toints
+    gettimeofday(&(r->st_tv), NULL);
+    r->previous_sent_bytes = 0;
+    r->bytes_array = ngx_array_create(r->pool, 1, sizeof(long long));
     return r;
 }
 

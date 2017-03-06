@@ -133,6 +133,9 @@ static ngx_int_t ngx_http_variable_time_iso8601(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_time_local(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
+//Add by toints
+static ngx_int_t ngx_http_variable_bytes_array(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
 
 /*
  * TODO:
@@ -329,6 +332,8 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
       0, NGX_HTTP_VAR_NOCACHEABLE, 0 },
 
     { ngx_string("time_local"), NULL, ngx_http_variable_time_local,
+      0, NGX_HTTP_VAR_NOCACHEABLE, 0 },
+    { ngx_string("bytes_array"), NULL, ngx_http_variable_bytes_array,
       0, NGX_HTTP_VAR_NOCACHEABLE, 0 },
 
 #if (NGX_HAVE_TCP_INFO)
@@ -2224,6 +2229,37 @@ ngx_http_variable_time_local(ngx_http_request_t *r,
     v->no_cacheable = 0;
     v->not_found = 0;
     v->data = p;
+
+    return NGX_OK;
+}
+
+static ngx_int_t
+ngx_http_variable_bytes_array(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    char  *p;
+
+    p = ngx_pnalloc(r->pool, r->bytes_array->nelts * 16);
+    if (p == NULL) {
+        return NGX_ERROR;
+    }
+
+    p[0] = '\0';
+    ngx_uint_t i = 0;
+    char byte_buff[18] = {0};
+    for(; i<r->bytes_array->nelts; i++)
+    {
+        long long bytes = ((long long *)r->bytes_array->elts)[i];
+	//ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "*****%d ***>>>> bytes:%d", i, bytes);
+        sprintf(byte_buff, "%lld|", bytes);
+        strcat(p, byte_buff);
+    }
+    //ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "----------->>>> array list string:%s", p);
+    v->len = (p == NULL) ? 0 : strlen(p);
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+    v->data = (unsigned char *)p;
 
     return NGX_OK;
 }

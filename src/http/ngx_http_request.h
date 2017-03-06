@@ -578,6 +578,10 @@ struct ngx_http_request_s {
 
     unsigned                          http_minor:16;
     unsigned                          http_major:16;
+    //add by toints
+    struct timeval st_tv;
+    long long previous_sent_bytes;
+    ngx_array_t *bytes_array;
 };
 
 
